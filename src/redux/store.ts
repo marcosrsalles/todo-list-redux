@@ -1,5 +1,7 @@
 import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import createSagaMiddleware from "redux-saga";
+import { persistStore, persistReducer } from "redux-persist";
+import storage from "redux-persist/lib/storage";
 import { rootSaga } from "./sagas";
 
 const sagaMiddleware = createSagaMiddleware();
@@ -23,7 +25,12 @@ const todosSlice = createSlice({
   initialState,
   reducers: {
     addTodo: (state, action: PayloadAction<Todo>) => {
-      state.items.push(action.payload);
+      state.items.push({
+        ...state.items,
+        id: action.payload.id,
+        text: action.payload.text,
+        done: action.payload.done,
+      });
     },
     removeTodo: (state, action: PayloadAction<number>) => {
       state.items = state.items.filter((todo) => todo.id !== action.payload);
@@ -38,14 +45,23 @@ const todosSlice = createSlice({
   },
 });
 
+const persistConfig = {
+  key: "todos",
+  storage,
+};
+
+const persistedReducer = persistReducer(persistConfig, todosSlice.reducer);
+
 export const { addTodo, removeTodo, updateTodo } = todosSlice.actions;
 
 export const store = configureStore({
   reducer: {
-    todos: todosSlice.reducer,
+    todos: persistedReducer,
   },
   middleware: [sagaMiddleware],
 });
+
+export const persistor = persistStore(store);
 
 sagaMiddleware.run(rootSaga);
 
